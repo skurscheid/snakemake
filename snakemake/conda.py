@@ -278,7 +278,25 @@ class Env:
 
 
 def shellcmd(env_path):
-    return "source activate '{}';".format(env_path)
+    from snakemake.shell import shell
+    try:
+        shell.check_output("type conda", stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        raise CreateCondaEnvironmentException("The 'conda' command is not "
+                                                  "available ")
+    try:
+        version = shell.check_output("conda --version",
+                                          stderr=subprocess.STDOUT).decode() \
+                                                                   .split()[1]
+        if StrictVersion(version) < StrictVersion("4.5.12"):
+                return "source activate '{}';".format(env_path)
+        else:
+                return "source ~/.bashrc && conda activate {};".format(env_path)
+    except subprocess.CalledProcessError as e:
+        raise CreateCondaEnvironmentException(
+            "Unable to check conda version:\n" + e.output.decode()
+        )
+
 
 
 def check_conda(singularity_img=None):
