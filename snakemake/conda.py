@@ -288,7 +288,7 @@ def shellcmd(env_path):
         version = shell.check_output("conda --version",
                                           stderr=subprocess.STDOUT).decode() \
                                                                    .split()[1]
-        if StrictVersion(version) < StrictVersion("4.5.12"):
+        if StrictVersion(version) < StrictVersion("4.4"):
                 return "source activate '{}';".format(env_path)
         else:
                 return "source ~/.bashrc && conda activate {};".format(env_path)
