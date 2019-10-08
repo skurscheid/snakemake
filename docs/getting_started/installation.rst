@@ -1,4 +1,4 @@
-.. getting_started-installation:
+.. _getting_started-installation:
 
 ============
 Installation
@@ -7,10 +7,12 @@ Installation
 Snakemake is available on PyPi as well as through Bioconda and also from source code.
 You can use one of the following ways for installing Snakemake.
 
+.. _conda-install:
+
 Installation via Conda
 ======================
 
-This is the recommended way to install Snakemake,
+This is the **recommended** way to install Snakemake,
 because it also enables Snakemake to :ref:`handle software dependencies of your
 workflow <integrated_package_management>`.
 
@@ -28,6 +30,18 @@ Then, you can install Snakemake with
     $ conda install -c bioconda -c conda-forge snakemake
 
 from the `Bioconda <https://bioconda.github.io>`_ channel.
+A minimal version of Snakemake which only depends on the bare necessities can be installed with
+
+.. code-block:: console
+
+    $ conda install -c bioconda -c conda-forge snakemake-minimal
+
+Note that Snakemake is available via Bioconda for historical, reproducibility, and continuity reasons.
+However, it is easy to combine Snakemake installation with other channels, e.g., by prefixing the package name with ``::bioconda``, i.e.,
+
+.. code-block:: console
+
+    $ conda install -c conda-forge bioconda::snakemake bioconda::snakemake-minimal
 
 Global Installation
 ===================
@@ -62,13 +76,13 @@ To create an installation in a virtual environment, use the following commands:
 Installing from Source
 ======================
 
-We recommend installing Snakemake into a virtualenv instead of globally.
+We recommend installing Snakemake into a virtualenv or a conda environment instead of globally.
 Use the following commands to create a virtualenv and install Snakemake.
 Note that this will install the development version and as you are installing from the source code, we trust that you know what you are doing and how to checkout individual versions/tags.
 
 .. code-block:: console
 
-    $ git clone https://bitbucket.org/snakemake/snakemake.git
+    $ git clone https://github.com/snakemake/snakemake.git
     $ cd snakemake
     $ virtualenv -p python3 .venv
     $ source .venv/bin/activate

@@ -13,7 +13,8 @@ import threading
 
 from snakemake.utils import format
 from snakemake.logging import logger
-from snakemake import singularity, conda
+from snakemake import singularity
+from snakemake.conda import Conda
 import snakemake
 
 
@@ -40,7 +41,8 @@ class shell:
     @classmethod
     def check_output(cls, cmd, **kwargs):
         return sp.check_output(
-            cmd, shell=True, executable=cls.get_executable(), **kwargs)
+            cmd, shell=True, executable=cls.get_executable(), **kwargs
+        )
 
     @classmethod
     def executable(cls, cmd):
@@ -48,9 +50,11 @@ class shell:
             # always enforce absolute path
             cmd = shutil.which(cmd)
             if not cmd:
-                raise WorkflowError("Cannot set default shell {} because it "
-                                    "is not available in your "
-                                    "PATH.".format(cmd))
+                raise WorkflowError(
+                    "Cannot set default shell {} because it "
+                    "is not available in your "
+                    "PATH.".format(cmd)
+                )
         if os.path.split(cmd)[-1] == "bash":
             cls._process_prefix = "set -euo pipefail; "
         cls._process_args["executable"] = cmd
@@ -75,10 +79,9 @@ class shell:
         with cls._lock:
             cls._processes.clear()
 
-    def __new__(cls, cmd, *args,
-                iterable=False,
-                read=False, bench_record=None,
-                **kwargs):
+    def __new__(
+        cls, cmd, *args, iterable=False, read=False, bench_record=None, **kwargs
+    ):
         if "stepout" in kwargs:
             raise KeyError("Argument stepout is not allowed in shell command.")
         cmd = format(cmd, *args, stepout=2, **kwargs)
@@ -86,7 +89,7 @@ class shell:
 
         stdout = sp.PIPE if iterable or read else STDOUT
 
-        close_fds = sys.platform != 'win32'
+        close_fds = sys.platform != "win32"
 
         jobid = context.get("jobid")
         if not context.get("is_shell"):
@@ -96,32 +99,37 @@ class shell:
         conda_env = context.get("conda_env", None)
         singularity_img = context.get("singularity_img", None)
         shadow_dir = context.get("shadow_dir", None)
-        if conda_env:
-            env_prefix = conda.shellcmd(conda_env)
 
-        cmd = "{} {} {} {}".format(
-                            env_prefix,
-                            cls._process_prefix,
-                            cmd.strip(),
-                            cls._process_suffix).strip()
+        cmd = "{} {} {}".format(
+            cls._process_prefix, cmd.strip(), cls._process_suffix
+        ).strip()
+
+        conda = None
+        if conda_env:
+            cmd = Conda(singularity_img).shellcmd(conda_env, cmd)
 
         if singularity_img:
             args = context.get("singularity_args", "")
             cmd = singularity.shellcmd(
-                singularity_img, cmd, args,
+                singularity_img,
+                cmd,
+                args,
                 shell_executable=cls._process_args["executable"],
-                container_workdir=shadow_dir)
-            logger.info(
-                "Activating singularity image {}".format(singularity_img))
-
+                container_workdir=shadow_dir,
+            )
+            logger.info("Activating singularity image {}".format(singularity_img))
         if conda_env:
             logger.info("Activating conda environment: {}".format(conda_env))
 
-        proc = sp.Popen(cmd,
-                        bufsize=-1,
-                        shell=True,
-                        stdout=stdout,
-                        close_fds=close_fds, **cls._process_args)
+        proc = sp.Popen(
+            cmd,
+            bufsize=-1,
+            shell=True,
+            stdout=stdout,
+            universal_newlines=iterable or None,
+            close_fds=close_fds,
+            **cls._process_args
+        )
 
         if jobid is not None:
             with cls._lock:
@@ -134,6 +142,7 @@ class shell:
             ret = proc.stdout.read()
         if bench_record is not None:
             from snakemake.benchmark import benchmarked
+
             with benchmarked(proc.pid, bench_record):
                 retcode = proc.wait()
         else:
@@ -150,7 +159,7 @@ class shell:
     @staticmethod
     def iter_stdout(proc, cmd):
         for l in proc.stdout:
-            yield l[:-1].decode()
+            yield l[:-1]
         retcode = proc.wait()
         if retcode:
             raise sp.CalledProcessError(retcode, cmd)
@@ -159,12 +168,16 @@ class shell:
 # set bash as default shell on posix compatible OS
 if os.name == "posix":
     if not shutil.which("bash"):
-        logger.warning("Cannot set bash as default shell because it is not "
-                       "available in your PATH. Falling back to sh.")
+        logger.warning(
+            "Cannot set bash as default shell because it is not "
+            "available in your PATH. Falling back to sh."
+        )
         if not shutil.which("sh"):
-            logger.warning("Cannot fall back to sh since it seems to be not "
-                           "available on this system. Using whatever is "
-                           "defined as default.")
+            logger.warning(
+                "Cannot fall back to sh since it seems to be not "
+                "available on this system. Using whatever is "
+                "defined as default."
+            )
         else:
             shell.executable("sh")
     else:
